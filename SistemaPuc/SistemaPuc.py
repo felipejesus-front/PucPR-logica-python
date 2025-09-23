@@ -102,6 +102,10 @@ def excluirEstudantePorCodigo(codigo):
     for estudante in Estudantes:
         if estudante["codigo"] == codigo:
             Estudantes.remove(estudante)
+
+            with open("Estudantes.json", "w", encoding="utf-8") as f:
+                json.dump(Estudantes, f, ensure_ascii=False)
+
             print("Estudante excluído com sucesso!")
             return
     print("\n===== Estudante não encontrado. =====\n")
@@ -114,6 +118,10 @@ def atualizarEstudantePorCodigo(codigo):
             novoCpf = input("Novo CPF do estudante: ")
             estudante["nome"] = novoNome
             estudante["cpf"] = novoCpf
+
+            with open("Estudantes.json", "w", encoding="utf-8") as f:
+                json.dump(Estudantes, f, ensure_ascii=False)
+
             print("Estudante atualizado com sucesso!")
             return
     print("\n===== Estudante não encontrado. =====\n")
