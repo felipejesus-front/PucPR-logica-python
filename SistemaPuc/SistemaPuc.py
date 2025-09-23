@@ -3,6 +3,7 @@
 # acabei me empolgando e pensei "será q eu n consigo criar as variaveis globais também baseado no listaMenu?"
 # pesquisei e descobri que posso fazer isso utilizando a função globals(), vou testar essa possibilidade de
 # gerar as variaveis globais a partir do listaMenu
+# Deixei o Estudante já preenchido pra mostrar q ele só cria o arquivo se já não existir um. e tbm pra mostrar a leitura dele ao inicar a aplicação.
 
 import sys
 import json
