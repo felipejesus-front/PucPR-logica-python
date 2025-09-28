@@ -1,9 +1,10 @@
-# Parei pra pesquisar sobre ler e criar arquivos pensei em criar os arquivos automaticamente a partir do listaMenu
-# pro caso de os itens mudarem, por exemplo.
-# acabei me empolgando e pensei "será q eu n consigo criar as variaveis globais também baseado no listaMenu?"
-# pesquisei e descobri que posso fazer isso utilizando a função globals(), vou testar essa possibilidade de
-# gerar as variaveis globais a partir do listaMenu
-# Deixei o Estudante já preenchido pra mostrar q ele só cria o arquivo se já não existir um. e tbm pra mostrar a leitura dele ao inicar a aplicação.
+# Todo: Apagar função de variaveis Globais ✅
+# Criar sistma de pegar arquivos dos arquivos pra usar nas funções que precisam dos dados ✅
+# Criar método de obter próximo código ✅
+# Criar metodo que salva dados nos arquivos ✅
+# Criar método de criar um novo item, já adicionando o novo item usando a função de salvar dados ✅
+# Tudo genericamente, passando somente a entidade ✅
+
 
 import sys
 import json
@@ -13,7 +14,6 @@ listaMenu = ["Estudantes", "Disciplinas", "Professores", "Turmas", "Matrículas"
 listaCrude = ["Incluir", "Listar", "Atualizar", "Excluir", "Voltar ao menu principal"]
 mensagemEscolha = "Informe a opção desejada: "
 mensagemFinalizando = "Finalizando Aplicação"
-idEstudante = 0
 
 
 def criaArquivoPraCadaEntidade(entidade):
@@ -27,26 +27,119 @@ def criaArquivoPraCadaEntidade(entidade):
                 print(f"Arquivo '{nomeArquivo}' criado com sucesso.")
 
 
-def iniciaVariaveisGlobais():
-    escopoGlobal = globals()
-    global idEstudante
-
-    for entidade in listaMenu:
-        nomeArquivo = f"{entidade}.json"
-        criaArquivoPraCadaEntidade(entidade)
-
-        if entidade != "Sair":
-            with open(nomeArquivo, "r", encoding="utf-8") as f:
-                escopoGlobal[entidade] = json.load(f)
-
-            print(f"Entidade carregada:\n {entidade} = {escopoGlobal[entidade]}\n")
-
-        if Estudantes and entidade == "Estudantes":
-            idEstudante = max(e["codigo"] for e in Estudantes) + 1
-            print(f"\nPróximo ID de estudante será: {idEstudante}\n")
+def carregarDadosDoJson(entidade):
+    nomeArquivo = f"{entidade}.json"
+    with open(nomeArquivo, "r", encoding="utf-8") as arquivoJson:
+        return json.load(arquivoJson)
 
 
-iniciaVariaveisGlobais()
+def salvarDadosNoJson(entidade, dados):
+    nomeArquivo = f"{entidade}.json"
+    with open(nomeArquivo, "w", encoding="utf-8") as arquivoJson:
+        return json.dump(dados, arquivoJson, ensure_ascii=False)
+
+
+def obterProximoCodigo(entidade):
+    dados = carregarDadosDoJson(entidade)
+    maiorCodigo = max((item["codigo"] for item in dados), default=0)
+    return 0 if dados == [] else maiorCodigo + 1
+
+
+def incluirItem(entidade, campos):
+    dados = carregarDadosDoJson(entidade)
+    codigo = obterProximoCodigo(entidade)
+    novoItem = {"codigo": codigo}
+    novoItem.update({campo: input(f"{campo}:") for campo in campos})
+    dados.append(novoItem)
+    salvarDadosNoJson(entidade, dados)
+    print(f"\n{entidade[:-1]} cadastrado com sucesso!\n")
+
+
+def listarItens(entidade):
+    dados = carregarDadosDoJson(entidade)
+    if dados:
+        for dado in dados:
+            print(f"===== {dado} =====")
+    else:
+        print(f"===== Não há {entidade} cadastrados =====")
+
+
+def codigoExiste(entidade, codigo):
+    dados = carregarDadosDoJson(entidade)
+    return any(item["codigo"] == codigo for item in dados)
+
+
+def atualizarItem(entidade, campos):
+    dados = carregarDadosDoJson(entidade)
+    codigo = int(input("informe o codigo do item que deseja atualizar: "))
+    for dado in dados:
+        print(dado["codigo"])
+        if dado["codigo"] == codigo:
+            for campo in campos:
+                dado[campo] = input(f"Novo {campo}: ")
+
+            salvarDadosNoJson(entidade, dados)
+
+            print(f"{entidade} atualizado com sucesso!")
+            return
+        else:
+            print(f"\n===== {entidade} não encontrado. =====\n")
+
+
+def incluirItemComValidacao(entidade, campos, validacoes):
+    dados = carregarDadosDoJson(entidade)
+    novoItem = {"codigo": obterProximoCodigo(entidade)}
+
+    for campo, (entidadeRelacionada, mensagemErro) in validacoes.items():
+        codigo = int(input(f"{campo}: "))
+        if not codigoExiste(entidadeRelacionada, codigo):
+            print(mensagemErro)
+            return
+        novoItem[campo] = codigo
+
+    novoItem.update(
+        {campo: input(f"{campo}: ") for campo in campos if campo not in validacoes}
+    )
+    dados.append(novoItem)
+    salvarDadosNoJson(entidade, dados)
+    print(f"{entidade[:-1]} cadastrado com sucesso!")
+
+
+# Função genérica para atualizar itens com validação de códigos relacionados
+def atualizarItemComValidacao(entidade, campos, validacoes):
+    dados = carregarDadosDoJson(entidade)
+    codigo = int(input("Informe o código do item a atualizar: "))
+    for item in dados:
+        if item["codigo"] == codigo:
+            for campo, (entidadeRelacionada, mensagemErro) in validacoes.items():
+                novoCodigo = int(input(f"Novo {campo}: "))
+                if not codigoExiste(entidadeRelacionada, novoCodigo):
+                    print(mensagemErro)
+                    return
+                item[campo] = novoCodigo
+
+            for campo in campos:
+                if campo not in validacoes:
+                    item[campo] = input(f"Novo {campo}: ")
+
+            salvarDadosNoJson(entidade, dados)
+            print(f"{entidade[:-1]} atualizado com sucesso!")
+            return
+    print(f"===== {entidade[:-1]} não encontrado. =====")
+
+
+def excluirItem(entidade):
+    dados = carregarDadosDoJson(entidade)
+    codigo = int(input("informe o codigo do item que deseja atualizar: "))
+    for dado in dados:
+        if dado["codigo"] == codigo:
+            dados.remove(dado)
+
+            salvarDadosNoJson(entidade, dados)
+
+            print(f"\n===== {dado} excluído com sucesso. =====")
+            return
+    print(f"\n===== Não há {entidade} cadatrados(as). =====\n")
 
 
 def sairDoSistema():
@@ -69,89 +162,63 @@ def menuOpcoes(lista, mensagem):
                 return indice, lista[indice]
             else:
                 print("\nOpção inválida.\n")
-        elif escolha in lista:
-            return lista.index(escolha), escolha
         else:
             print("\nOpção inválida.\n")
 
 
-def listarEstudantes():
-    if Estudantes:
-        print(Estudantes)
-        for item in Estudantes:
-            print(f"===== {item} =====")
-    else:
-        print("===== Não há estudantes cadastrados =====")
+def navegarMenuOperacoes(entidade, campos):
+    validacoes = {
+        "Turmas": {
+            "codigoProfessor": (
+                "Professores",
+                "===== Código do professor não encontrado. =====",
+            ),
+            "codigoDisciplina": (
+                "Disciplinas",
+                "===== Código da disciplina não encontrado. =====",
+            ),
+        },
+        "Matrículas": {
+            "codigoTurma": ("Turmas", "===== Código da turma não encontrado. ====="),
+            "codigoEstudante": (
+                "Estudantes",
+                "===== Código do estudante não encontrado. =====",
+            ),
+        },
+    }
 
-
-def incluirEstudante():
-    global idEstudante
-    global Estudantes
-    nome = input("Nome do estudante: ")
-    cpf = input("CPF do estudante: ")
-    estudante = {"codigo": idEstudante, "nome": nome, "cpf": cpf}
-    Estudantes.append(estudante)
-    idEstudante += 1
-
-    with open("Estudantes.json", "w", encoding="utf-8") as f:
-        json.dump(Estudantes, f, ensure_ascii=False)
-
-    print("Estudante cadastrado com sucesso!")
-
-
-def excluirEstudantePorCodigo(codigo):
-    for estudante in Estudantes:
-        if estudante["codigo"] == codigo:
-            Estudantes.remove(estudante)
-
-            with open("Estudantes.json", "w", encoding="utf-8") as f:
-                json.dump(Estudantes, f, ensure_ascii=False)
-
-            print("Estudante excluído com sucesso!")
-            return
-    print("\n===== Estudante não encontrado. =====\n")
-
-
-def atualizarEstudantePorCodigo(codigo):
-    for estudante in Estudantes:
-        if estudante["codigo"] == codigo:
-            novoNome = input("Novo nome do estudante: ")
-            novoCpf = input("Novo CPF do estudante: ")
-            estudante["nome"] = novoNome
-            estudante["cpf"] = novoCpf
-
-            with open("Estudantes.json", "w", encoding="utf-8") as f:
-                json.dump(Estudantes, f, ensure_ascii=False)
-
-            print("Estudante atualizado com sucesso!")
-            return
-    print("\n===== Estudante não encontrado. =====\n")
-
-
-def navegarMenuOperacoes(nomeMenu):
     while True:
-        print(f"\n***** [{nomeMenu}] Menu de operações: *****\n")
+        print(f"\n***** [{entidade}] Menu de operações: *****\n")
         indice, escolhaCrude = menuOpcoes(listaCrude, mensagemEscolha)
         if escolhaCrude == "Voltar ao menu principal":
             break
-        else:
-            executarOperacao(indice, escolhaMenu)
+        elif escolhaCrude == "Incluir":
+            if entidade in validacoes:
+                incluirItemComValidacao(entidade, campos, validacoes[entidade])
+            else:
+                incluirItem(entidade, campos)
+        elif escolhaCrude == "Listar":
+            listarItens(entidade)
+        elif escolhaCrude == "Atualizar":
+            if entidade in validacoes:
+                atualizarItemComValidacao(entidade, campos, validacoes[entidade])
+            else:
+                atualizarItem(entidade, campos)
+        elif escolhaCrude == "Excluir":
+            excluirItem(entidade)
 
 
-def executarOperacao(indice, escolhaMenu):
-    if indice == 0 and escolhaMenu == listaMenu[0]:
-        incluirEstudante()
-    elif indice == 1 and escolhaMenu == listaMenu[0]:
-        listarEstudantes()
-    elif indice == 3 and escolhaMenu == listaMenu[0]:
-        codigo = int(input("Informe o código do estudante a excluir: "))
-        excluirEstudantePorCodigo(codigo)
-    elif indice == 2 and escolhaMenu == listaMenu[0]:
-        codigo = int(input("Informe o código do estudante a atualizar: "))
-        atualizarEstudantePorCodigo(codigo)
-    else:
-        print(f"\n===== [EM DESENVOLVIMENTO] =====\n")
+# Campos de cada entidade
+camposEntidades = {
+    "Estudantes": ["nome", "cpf"],
+    "Professores": ["nome", "cpf"],
+    "Disciplinas": ["nome"],
+    "Turmas": ["codigoProfessor", "codigoDisciplina"],
+    "Matrículas": ["codigoTurma", "codigoEstudante"],
+}
 
+for entidade in listaMenu:
+    criaArquivoPraCadaEntidade(entidade)
 
 while True:
     print("\nEscolha um dos itens do Menu abaixo.")
@@ -159,9 +226,7 @@ while True:
     if escolhaMenu == "Sair":
         print("\n***** você escolheu Sair, Saindo do sistema*****\n")
         sairDoSistema()
-    elif indice != 0:
-        print(f"\n===== [EM DESENVOLVIMENTO] =====\n")
-
+    elif escolhaMenu in camposEntidades:
+        navegarMenuOperacoes(escolhaMenu, camposEntidades[escolhaMenu])
     else:
-        print(f"\n***** [{escolhaMenu}] selecionado *****\n")
-        navegarMenuOperacoes(escolhaMenu)
+        print(f"\n===== Menu inválido =====\n")
